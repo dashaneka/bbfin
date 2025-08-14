@@ -84,9 +84,12 @@
                     <div class="bg-white p-5 rounded-lg shadow-md">
                         <h2 class="text-2xl font-bold mb-4 text-green-600">paisa aayo (income)</h2>
                         <form id="income-form" class="flex flex-col sm:flex-row gap-2 mb-4">
-                            <input type="text" id="income-desc" placeholder="e.g., phone repair" class="flex-grow p-2 border rounded-md focus:ring-2 focus:ring-green-400 focus:outline-none" required>
-                            <input type="number" id="income-amount" placeholder="amount" class="w-full sm:w-28 p-2 border rounded-md focus:ring-2 focus:ring-green-400 focus:outline-none" required>
-                            <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 font-semibold transition-colors">add</button>
+                            <!-- fix: changed 'flex-grow' to 'flex-auto' for better resizing -->
+                            <input type="text" id="income-desc" placeholder="e.g., phone repair" class="flex-auto p-2 border rounded-md focus:ring-2 focus:ring-green-400 focus:outline-none" required>
+                            <!-- fix: added 'flex-none' to prevent shrinking -->
+                            <input type="number" id="income-amount" placeholder="amount" class="flex-none w-full sm:w-28 p-2 border rounded-md focus:ring-2 focus:ring-green-400 focus:outline-none" required>
+                            <!-- fix: added 'flex-none' to prevent shrinking -->
+                            <button type="submit" class="flex-none bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 font-semibold transition-colors">add</button>
                         </form>
                         <div id="income-list" class="transaction-list max-h-80 overflow-y-auto space-y-2">
                             <!-- income items will be added here -->
@@ -97,9 +100,12 @@
                     <div class="bg-white p-5 rounded-lg shadow-md">
                         <h2 class="text-2xl font-bold mb-4 text-red-600">paisa gayo (expenses)</h2>
                         <form id="expense-form" class="flex flex-col sm:flex-row gap-2 mb-4">
-                            <input type="text" id="expense-desc" placeholder="e.g., parts, rent" class="flex-grow p-2 border rounded-md focus:ring-2 focus:ring-red-400 focus:outline-none" required>
-                            <input type="number" id="expense-amount" placeholder="amount" class="w-full sm:w-28 p-2 border rounded-md focus:ring-2 focus:ring-red-400 focus:outline-none" required>
-                            <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 font-semibold transition-colors">add</button>
+                            <!-- fix: changed 'flex-grow' to 'flex-auto' for better resizing -->
+                            <input type="text" id="expense-desc" placeholder="e.g., parts, rent" class="flex-auto p-2 border rounded-md focus:ring-2 focus:ring-red-400 focus:outline-none" required>
+                             <!-- fix: added 'flex-none' to prevent shrinking -->
+                            <input type="number" id="expense-amount" placeholder="amount" class="flex-none w-full sm:w-28 p-2 border rounded-md focus:ring-2 focus:ring-red-400 focus:outline-none" required>
+                             <!-- fix: added 'flex-none' to prevent shrinking -->
+                            <button type="submit" class="flex-none bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 font-semibold transition-colors">add</button>
                         </form>
                         <div id="expense-list" class="transaction-list max-h-80 overflow-y-auto space-y-2">
                             <!-- expense items will be added here -->
