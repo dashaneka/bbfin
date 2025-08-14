@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>b&b mobile - finance tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Simple spinner */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 4px solid #3498db;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Custom scrollbar for transaction lists */
+        .transaction-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .transaction-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .transaction-list::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        .transaction-list::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Main Container -->
+    <div class="container mx-auto p-4 md:p-6 max-w-4xl">
+
+        <!-- Header -->
+        <header class="text-center mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">b&b mobile</h1>
+            <p class="text-lg text-gray-600">finance tracker</p>
+            <div id="loading" class="flex justify-center items-center mt-4">
+                <div class="loader"></div>
+                <p class="ml-4 text-gray-500">loading your data...</p>
+            </div>
+            <div id="auth-info" class="hidden text-xs text-gray-400 mt-2">
+                user id: <span id="user-id" class="font-mono"></span>
+            </div>
+        </header>
+
+        <!-- Main content, hidden until loaded -->
+        <main id="main-content" class="hidden">
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-green-100 p-4 rounded-lg shadow">
+                    <h2 class="text-lg font-semibold text-green-800">total income</h2>
+                    <p id="total-income" class="text-2xl font-bold text-green-900">npr 0</p>
+                </div>
+                <div class="bg-red-100 p-4 rounded-lg shadow">
+                    <h2 class="text-lg font-semibold text-red-800">total expenses</h2>
+                    <p id="total-expenses" class="text-2xl font-bold text-red-900">npr 0</p>
+                </div>
+                <div class="bg-blue-100 p-4 rounded-lg shadow">
+                    <h2 class="text-lg font-semibold text-blue-800">profit</h2>
+                    <p id="total-profit" class="text-2xl font-bold text-blue-900">npr 0</p>
+                </div>
+            </div>
+
+            <!-- Income and Expense Columns -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                <!-- Income Column -->
+                <div class="bg-white p-5 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-bold mb-4 text-green-600">paisa aayo (income)</h2>
+                    <form id="income-form" class="flex gap-2 mb-4">
+                        <input type="text" id="income-desc" placeholder="e.g., phone repair" class="flex-grow p-2 border rounded-md focus:ring-2 focus:ring-green-400 focus:outline-none" required>
+                        <input type="number" id="income-amount" placeholder="amount" class="w-28 p-2 border rounded-md focus:ring-2 focus:ring-green-400 focus:outline-none" required>
+                        <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 font-semibold transition-colors">add</button>
+                    </form>
+                    <div id="income-list" class="transaction-list max-h-80 overflow-y-auto space-y-2">
+                        <!-- Income items will be added here -->
+                    </div>
+                </div>
+
+                <!-- Expense Column -->
+                <div class="bg-white p-5 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-bold mb-4 text-red-600">paisa gayo (expenses)</h2>
+                    <form id="expense-form" class="flex gap-2 mb-4">
+                        <input type="text" id="expense-desc" placeholder="e.g., parts, rent" class="flex-grow p-2 border rounded-md focus:ring-2 focus:ring-red-400 focus:outline-none" required>
+                        <input type="number" id="expense-amount" placeholder="amount" class="w-28 p-2 border rounded-md focus:ring-2 focus:ring-red-400 focus:outline-none" required>
+                        <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 font-semibold transition-colors">add</button>
+                    </form>
+                    <div id="expense-list" class="transaction-list max-h-80 overflow-y-auto space-y-2">
+                        <!-- Expense items will be added here -->
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // --- Firebase Configuration ---
+        // These global variables are provided by the environment.
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : { apiKey: "YOUR_API_KEY", authDomain: "YOUR_AUTH_DOMAIN", projectId: "YOUR_PROJECT_ID" }; // Fallback for local dev
+        
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-b&b-mobile-app';
+
+        // --- Firebase Imports ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, doc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Firebase Initialization ---
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- Global Variables ---
+        let userId = null;
+        let transactionsUnsubscribe = null;
+
+        // --- DOM Elements ---
+        const loadingEl = document.getElementById('loading');
+        const mainContentEl = document.getElementById('main-content');
+        const authInfoEl = document.getElementById('auth-info');
+        const userIdEl = document.getElementById('user-id');
+        const incomeForm = document.getElementById('income-form');
+        const expenseForm = document.getElementById('expense-form');
+        const incomeList = document.getElementById('income-list');
+        const expenseList = document.getElementById('expense-list');
+        const totalIncomeEl = document.getElementById('total-income');
+        const totalExpensesEl = document.getElementById('total-expenses');
+        const totalProfitEl = document.getElementById('total-profit');
+
+        // --- Authentication ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // User is signed in.
+                userId = user.uid;
+                userIdEl.textContent = userId;
+                
+                // Show user ID and main content
+                loadingEl.style.display = 'none';
+                mainContentEl.classList.remove('hidden');
+                authInfoEl.classList.remove('hidden');
+
+                // Start listening for data changes
+                listenForTransactions();
+            } else {
+                // User is signed out, attempt to sign in.
+                try {
+                    const token = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                    if (token) {
+                        await signInWithCustomToken(auth, token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (error) {
+                    console.error("error during sign-in:", error);
+                    loadingEl.textContent = "could not connect. please refresh the page.";
+                }
+            }
+        });
+        
+        // --- Firestore Data Listener ---
+        function listenForTransactions() {
+            if (!userId) return;
+            
+            // If a listener is already active, unsubscribe to prevent duplicates
+            if (transactionsUnsubscribe) {
+                transactionsUnsubscribe();
+            }
+
+            const transactionsColPath = `artifacts/${appId}/users/${userId}/transactions`;
+            const q = query(collection(db, transactionsColPath));
+
+            transactionsUnsubscribe = onSnapshot(q, (querySnapshot) => {
+                const transactions = [];
+                querySnapshot.forEach((doc) => {
+                    transactions.push({ id: doc.id, ...doc.data() });
+                });
+                // Sort by timestamp in descending order (newest first)
+                transactions.sort((a, b) => (b.timestamp?.toDate() || 0) - (a.timestamp?.toDate() || 0));
+                renderTransactions(transactions);
+            }, (error) => {
+                console.error("error fetching transactions:", error);
+                alert("could not fetch data. check console for errors.");
+            });
+        }
+
+        // --- Render UI ---
+        function renderTransactions(transactions) {
+            // Clear current lists
+            incomeList.innerHTML = '';
+            expenseList.innerHTML = '';
+
+            let totalIncome = 0;
+            let totalExpenses = 0;
+
+            transactions.forEach(t => {
+                if (t.type === 'income') {
+                    totalIncome += t.amount;
+                    incomeList.innerHTML += createTransactionItem(t, 'green');
+                } else if (t.type === 'expense') {
+                    totalExpenses += t.amount;
+                    expenseList.innerHTML += createTransactionItem(t, 'red');
+                }
+            });
+            
+            const profit = totalIncome - totalExpenses;
+
+            // Update summary cards
+            totalIncomeEl.textContent = `npr ${totalIncome.toLocaleString()}`;
+            totalExpensesEl.textContent = `npr ${totalExpenses.toLocaleString()}`;
+            totalProfitEl.textContent = `npr ${profit.toLocaleString()}`;
+
+            // Change profit color based on value
+            totalProfitEl.classList.remove('text-green-900', 'text-red-900', 'text-blue-900');
+            if (profit > 0) {
+                totalProfitEl.classList.add('text-green-900');
+            } else if (profit < 0) {
+                totalProfitEl.classList.add('text-red-900');
+            } else {
+                 totalProfitEl.classList.add('text-blue-900');
+            }
+        }
+
+        // --- Create HTML for a single transaction item ---
+        function createTransactionItem(transaction, color) {
+            const date = transaction.timestamp ? transaction.timestamp.toDate().toLocaleDateString('en-np') : 'just now';
+            return `
+                <div class="flex justify-between items-center bg-gray-50 p-3 rounded-md border-l-4 border-${color}-400">
+                    <div>
+                        <p class="font-medium capitalize">${transaction.description}</p>
+                        <p class="text-xs text-gray-500">${date}</p>
+                    </div>
+                    <div class="flex items-center gap-4">
+                       <p class="font-bold text-lg">npr ${transaction.amount.toLocaleString()}</p>
+                       <button data-id="${transaction.id}" class="delete-btn text-gray-400 hover:text-red-600 transition-colors">&times;</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- Add Transaction Function ---
+        async function addTransaction(type, description, amount) {
+            if (!userId) {
+                alert("you are not signed in.");
+                return;
+            }
+            try {
+                const transactionsColPath = `artifacts/${appId}/users/${userId}/transactions`;
+                await addDoc(collection(db, transactionsColPath), {
+                    type: type,
+                    description: description,
+                    amount: Number(amount),
+                    timestamp: serverTimestamp()
+                });
+            } catch (error) {
+                console.error("error adding document: ", error);
+                alert("could not save transaction. please try again.");
+            }
+        }
+
+        // --- Delete Transaction Function ---
+        async function deleteTransaction(id) {
+            if (!userId) return;
+            if (!confirm("are you sure you want to delete this entry?")) return;
+
+            try {
+                const docPath = `artifacts/${appId}/users/${userId}/transactions/${id}`;
+                await deleteDoc(doc(db, docPath));
+            } catch (error) {
+                console.error("error deleting document: ", error);
+                alert("could not delete transaction.");
+            }
+        }
+
+        // --- Event Listeners ---
+        incomeForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const desc = document.getElementById('income-desc').value;
+            const amount = document.getElementById('income-amount').value;
+            if (desc && amount > 0) {
+                addTransaction('income', desc, amount);
+                incomeForm.reset();
+            }
+        });
+
+        expenseForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const desc = document.getElementById('expense-desc').value;
+            const amount = document.getElementById('expense-amount').value;
+            if (desc && amount > 0) {
+                addTransaction('expense', desc, amount);
+                expenseForm.reset();
+            }
+        });
+
+        // Event delegation for delete buttons
+        document.body.addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-btn')) {
+                const id = e.target.getAttribute('data-id');
+                deleteTransaction(id);
+            }
+        });
+
+    </script>
+</body>
+</html>
